@@ -1,0 +1,74 @@
+# azure-pipelines.yml (Golang VDR Service)
+# Sprint 2: Build & Docker Image Pipeline
+
+trigger:
+  branches:
+    include:
+      - main
+      - gateway
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Replace 'dockerHubServiceConnection' with the actual name of your Azure DevOps Docker service connection
+  dockerRegistryServiceConnection: 'VDR_DockerHub_Connection'
+  # The name of your Docker repository (e.g., dakshdevrani/iot_vdr_service)
+  imageRepository: 'shreyash2005/iot_vdr_service'
+  containerRegistry: 'docker.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+steps:
+# 1. Install and setup Go
+- task: GoTool@0
+  inputs:
+    version: '1.21'
+  displayName: 'Install Go 1.21'
+
+# 2. Run Go Code Formatting (gofmt)
+- script: |
+    echo "Running gofmt..."
+    unformatted=$(gofmt -l .)
+    if [ -n "$unformatted" ]; then
+      echo "The following files are not formatted:"
+      echo "$unformatted"
+      exit 1
+    fi
+  displayName: 'Run Linting (gofmt)'
+  continueOnError: true
+
+# 3. Download Dependencies
+- script: |
+    go mod download
+  displayName: 'Download Go Dependencies'
+
+# 4. Run Unit Tests
+- script: |
+    go test -v ./...
+  displayName: 'Run Go Unit Tests'
+  continueOnError: true
+
+# 5. Login to Docker Hub (Required for buildx push)
+- task: Docker@2
+  displayName: 'Login to Docker Hub'
+  inputs:
+    command: login
+    containerRegistry: $(dockerRegistryServiceConnection)
+
+# 6. Build and Push Universal Docker Image (Buildx)
+- script: |
+    # Install QEMU emulators (required for compiling ARM64 on an AMD64 runner)
+    docker run --privileged --rm tonistiigi/binfmt --install all
+    
+    # Create and boot a new buildx builder instance
+    docker buildx create --name mybuilder --use
+    docker buildx inspect --bootstrap
+    
+    # Build and push the multi-architecture image
+    docker buildx build --platform linux/amd64,linux/arm64 \
+      -t $(imageRepository):$(tag) \
+      -t $(imageRepository):latest \
+      -f $(dockerfilePath) \
+      --push $(Build.SourcesDirectory)
+  displayName: 'Build and Push Universal Image (AMD64 & ARM64)'
