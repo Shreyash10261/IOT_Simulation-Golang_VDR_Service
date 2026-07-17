@@ -14,5 +14,9 @@ RUN go mod tidy
 # Build the VDR binary
 RUN go build -o vdr ./cmd/vdr/main.go
 
-# Execute the binary
+# Make entrypoint executable
+RUN chmod +x ./entrypoint.sh
+
+# Execute the entrypoint script
+ENTRYPOINT ["./entrypoint.sh"]
 CMD ["./vdr"]

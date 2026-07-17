@@ -15,9 +15,12 @@ type VirtualNetworkInterface struct {
 // NewTUNInterface creates and returns a new TUN interface using the water library.
 // Note: This requires appropriate OS privileges (NET_ADMIN / sudo) to execute successfully.
 func NewTUNInterface(ifceName string) (*VirtualNetworkInterface, error) {
-	// We use the default configuration, but specify TUN instead of TAP
+	// We specify TAP to ensure we receive Layer 2 Ethernet frames (needed for ARP)
 	config := water.Config{
-		DeviceType: water.TUN,
+		DeviceType: water.TAP,
+		PlatformSpecificParams: water.PlatformSpecificParams{
+			Name: ifceName,
+		},
 	}
 	
 	// Different OSes require different configurations, water handles this cleanly
@@ -40,7 +43,7 @@ func (vni *VirtualNetworkInterface) Name() string {
 }
 
 // Listen starts a blocking loop to continuously read raw packets from the interface
-func (vni *VirtualNetworkInterface) Listen() {
+func (vni *VirtualNetworkInterface) Listen(dispatcher *PacketDispatcher) {
 	log.Printf("Starting virtual interface listener on %s...\n", vni.name)
 
 	// Standard MTU size buffer
@@ -53,12 +56,7 @@ func (vni *VirtualNetworkInterface) Listen() {
 			continue
 		}
 
-		// At this point, `packet[:n]` contains the raw IP packet (Layer 3).
-		// In the next task, we will send this packet to the PacketDispatcher to check
-		// if it's an ICMP ping targeting one of our registered devices.
-		
-		log.Printf("Received %d bytes on %s\n", n, vni.name)
-		
-		// TODO: Forward packet to Dispatcher here
+		// Forward the raw packet slice to the dispatcher
+		dispatcher.Dispatch(packet[:n])
 	}
 }
