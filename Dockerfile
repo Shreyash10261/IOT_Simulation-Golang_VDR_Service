@@ -1,9 +1,9 @@
-FROM golang:alpine
-
+# Stage 1: Build
+FROM golang:1.20-alpine AS builder
 WORKDIR /app
 
-# Install iproute2 for debugging networking (like ip a)
-RUN apk add --no-cache iproute2
+# Install git and iproute2 for building/networking
+RUN apk add --no-cache git iproute2
 
 # Copy all source and modules
 COPY . .
@@ -12,7 +12,18 @@ COPY . .
 RUN go mod tidy
 
 # Build the VDR binary
-RUN go build -o vdr ./cmd/vdr/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o vdr ./cmd/vdr/main.go
+
+# Stage 2: Minimal Runtime
+FROM alpine:latest
+WORKDIR /app
+
+# Install necessary network tools for TUN/TAP testing (iproute2)
+RUN apk add --no-cache ca-certificates tzdata iproute2 tcpdump iptables
+
+# Copy the binary and entrypoint script from builder
+COPY --from=builder /app/vdr .
+COPY --from=builder /app/entrypoint.sh .
 
 # Make entrypoint executable
 RUN chmod +x ./entrypoint.sh
