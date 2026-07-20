@@ -18,7 +18,8 @@ const (
 type ProjectorState struct {
 	mu         sync.RWMutex
 	powerState PowerState
-	
+	lampHours  int
+
 	// Future extension points for Sprint 3
 	// inputState string
 	// hasErrors  bool
@@ -28,6 +29,7 @@ type ProjectorState struct {
 func NewProjectorState() *ProjectorState {
 	return &ProjectorState{
 		powerState: PowerOff,
+		lampHours:  0,
 	}
 }
 
@@ -43,4 +45,18 @@ func (s *ProjectorState) SetPower(state PowerState) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.powerState = state
+}
+
+// GetLampHours safely retrieves the current lamp hours.
+func (s *ProjectorState) GetLampHours() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.lampHours
+}
+
+// SetLampHours safely updates the lamp hours.
+func (s *ProjectorState) SetLampHours(hours int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lampHours = hours
 }

@@ -12,6 +12,11 @@ func NewPJLinkDevice() *PJLinkDevice {
 	}
 }
 
+// State returns the underlying projector state.
+func (d *PJLinkDevice) State() *ProjectorState {
+	return d.state
+}
+
 // Handle is the core public method. It accepts raw TCP bytes from a network socket,
 // processes the command against the simulated state, and returns the exact bytes to write back to the socket.
 func (d *PJLinkDevice) Handle(requestBytes []byte) []byte {

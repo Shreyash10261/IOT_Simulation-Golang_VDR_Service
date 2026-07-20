@@ -3,38 +3,45 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/team/vdr/internal/network"
 	"github.com/team/vdr/internal/registry"
+	"github.com/team/vdr/internal/worker"
 )
 
 func main() {
 	fmt.Println("Virtual Device Runtime (VDR) Engine Started...")
 	log.Println("Ready to consume JSON profiles.")
 
-	// 1. Initialize the Device Registry (Task 162)
+	// 1. Initialize the Device Registry
 	reg := registry.NewDeviceRegistry()
-	
-	// Create a test Projector and add it to the registry
-	testProjector := &registry.Device{
-		IP:         "10.10.1.55",
-		MACAddress: []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x55}, // Fake MAC
-		IsOnline:   true,
-	}
-	reg.RegisterDevice(testProjector)
-	log.Printf("Registered Test Projector at IP: %s, MAC: %x", testProjector.IP, testProjector.MACAddress)
 
-	// 2. Scaffold TAP Interface
+	// 2. Initialize and start the Worker Manager
+	mgr := worker.NewWorkerManager(reg)
+
+	configPath := os.Getenv("DEVICES_CONFIG")
+	if configPath == "" {
+		configPath = "devices.json"
+	}
+
+	log.Printf("Loading device configurations from %s...", configPath)
+	if err := mgr.LoadAndSpawn(configPath); err != nil {
+		log.Printf("Failed to load and spawn virtual devices: %v", err)
+		log.Println("VDR continuing with empty registry...")
+	}
+
+	// 3. Scaffold TAP Interface
 	tun, err := network.NewTUNInterface("tap0")
 	if err != nil {
 		log.Printf("Failed to create TAP interface (requires elevated privileges): %v", err)
 		log.Println("VDR continuing without network packet interception...")
 	} else {
-		// 3. Initialize the Packet Dispatcher (Task 163)
+		// 4. Initialize the Packet Dispatcher
 		dispatcher := network.NewPacketDispatcher(tun, reg)
-		
-		// 4. Run the interface listener in the background
+
+		// 5. Run the interface listener in the background
 		go tun.Listen(dispatcher)
 	}
 

@@ -1,0 +1,8 @@
+# Binaries
+vdr
+*.exe
+*.test
+
+# IDEs
+.vscode/
+.idea/

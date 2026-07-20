@@ -7,7 +7,7 @@ import (
 // ParseRequest takes raw bytes from the TCP socket and returns a structured Request.
 // The PJLink Class 1 specification mandates the format: "%1COMMAND PARAMETER\r"
 //
-// Note (Sprint 2): This implementation assumes Authentication Disabled mode. 
+// Note (Sprint 2): This implementation assumes Authentication Disabled mode.
 // MD5 Challenge-Response authentication headers are not currently supported.
 func ParseRequest(raw []byte) (*Request, error) {
 	// 1. Strip trailing carriage return or newlines
@@ -20,7 +20,7 @@ func ParseRequest(raw []byte) (*Request, error) {
 
 	classStr := msg[1:2]
 	class := CommandClass(classStr)
-	
+
 	if class != Class1 && class != Class2 {
 		return nil, ErrUndefinedCommand
 	}

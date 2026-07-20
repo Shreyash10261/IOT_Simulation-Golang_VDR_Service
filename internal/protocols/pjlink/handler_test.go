@@ -60,6 +60,29 @@ func TestPJLinkDevice_HandlePOWR(t *testing.T) {
 			requestBytes:  []byte("INVALID_BYTES\r"),
 			expectedBytes: []byte("%1ERR=ERR1\r"),
 		},
+		{
+			name:          "LAMP Query - Power Off",
+			requestBytes:  []byte("%1LAMP ?\r"),
+			expectedBytes: []byte("%1LAMP=1250 0\r"),
+			setupStateFunc: func(s *ProjectorState) {
+				s.SetPower(PowerOff)
+				s.SetLampHours(1250)
+			},
+		},
+		{
+			name:          "LAMP Query - Power On",
+			requestBytes:  []byte("%1LAMP ?\r"),
+			expectedBytes: []byte("%1LAMP=2500 1\r"),
+			setupStateFunc: func(s *ProjectorState) {
+				s.SetPower(PowerOn)
+				s.SetLampHours(2500)
+			},
+		},
+		{
+			name:          "LAMP Query - Error Out of Parameter",
+			requestBytes:  []byte("%1LAMP 1\r"),
+			expectedBytes: []byte("%1LAMP=ERR2\r"),
+		},
 	}
 
 	for _, tt := range tests {

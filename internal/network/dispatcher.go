@@ -27,7 +27,7 @@ func NewPacketDispatcher(vni *VirtualNetworkInterface, reg *registry.DeviceRegis
 func (pd *PacketDispatcher) Dispatch(rawBytes []byte) {
 	// Parse the raw bytes as an Ethernet frame
 	packet := gopacket.NewPacket(rawBytes, layers.LayerTypeEthernet, gopacket.Default)
-	
+
 	// Check if it's an Ethernet frame
 	ethLayer := packet.Layer(layers.LayerTypeEthernet)
 	if ethLayer == nil {
@@ -51,7 +51,7 @@ func (pd *PacketDispatcher) handleARP(eth *layers.Ethernet, arp *layers.ARP) {
 	}
 
 	targetIP := net.IP(arp.DstProtAddress)
-	
+
 	// Check if the requested IP exists in our Device Registry
 	device, exists := pd.registry.GetDeviceByIP(targetIP.String())
 	if !exists {

@@ -1,5 +1,9 @@
 package pjlink
 
+import (
+	"fmt"
+)
+
 // HandlePOWR processes the PJLink Power command ("POWR")
 func HandlePOWR(req *Request, state *ProjectorState) (*Response, error) {
 	// Status Query
@@ -18,7 +22,7 @@ func HandlePOWR(req *Request, state *ProjectorState) (*Response, error) {
 		if state.GetPower() == PowerCooling {
 			return nil, ErrUnavailableTime
 		}
-		
+
 		state.SetPower(PowerOff)
 		return &Response{
 			Class:   req.Class,
@@ -45,4 +49,30 @@ func HandlePOWR(req *Request, state *ProjectorState) (*Response, error) {
 
 	// If the parameter is anything else (e.g., "9"), it violates the PJLink spec for POWR
 	return nil, ErrOutOfParameter
+}
+
+// HandleLAMP processes the PJLink Lamp hours query ("LAMP")
+func HandleLAMP(req *Request, state *ProjectorState) (*Response, error) {
+	// Lamp command only supports query ("?") in PJLink Class 1 standard
+	if req.Parameter != "?" {
+		return nil, ErrOutOfParameter
+	}
+
+	lampHours := state.GetLampHours()
+
+	// Format is: "hours status" where status is:
+	// 0: Lamp is off
+	// 1: Lamp is on
+	lampStatus := "0"
+	if state.GetPower() == PowerOn {
+		lampStatus = "1"
+	}
+
+	payload := fmt.Sprintf("%d %s", lampHours, lampStatus)
+
+	return &Response{
+		Class:   req.Class,
+		Command: req.Command,
+		Payload: payload,
+	}, nil
 }

@@ -22,10 +22,10 @@ func NewTUNInterface(ifceName string) (*VirtualNetworkInterface, error) {
 			Name: ifceName,
 		},
 	}
-	
+
 	// Different OSes require different configurations, water handles this cleanly
 	// For Linux: config.Name = ifceName
-	
+
 	ifce, err := water.New(config)
 	if err != nil {
 		return nil, err
