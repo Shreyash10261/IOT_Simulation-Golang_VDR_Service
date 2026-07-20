@@ -19,7 +19,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install necessary network tools for TUN/TAP testing (iproute2)
-RUN apk add --no-cache ca-certificates tzdata iproute2 tcpdump iptables
+RUN apk add --no-cache ca-certificates tzdata iproute2 tcpdump iptables iputils
 
 # Copy the binary and entrypoint script from builder
 COPY --from=builder /app/vdr .
