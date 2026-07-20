@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/team/vdr/internal/network"
 	"github.com/team/vdr/internal/registry"
@@ -33,7 +34,9 @@ func main() {
 	}
 
 	// 3. Scaffold TAP Interface
-	tun, err := network.NewTUNInterface("tap0")
+	var tun *network.VirtualNetworkInterface
+	var err error
+	tun, err = network.NewTUNInterface("tap0")
 	if err != nil {
 		log.Printf("Failed to create TAP interface (requires elevated privileges): %v", err)
 		log.Println("VDR continuing without network packet interception...")
@@ -45,8 +48,19 @@ func main() {
 		go tun.Listen(dispatcher)
 	}
 
-	// Prevent main from exiting immediately
-	for {
-		time.Sleep(time.Hour)
+	// Set up signal handling for graceful shutdown
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Block until a signal is received
+	<-stop
+
+	log.Println("Shutting down VDR Engine...")
+	mgr.StopAll()
+	if tun != nil {
+		if err := tun.Close(); err != nil {
+			log.Printf("Error closing TAP interface: %v", err)
+		}
 	}
+	log.Println("VDR Engine stopped cleanly.")
 }

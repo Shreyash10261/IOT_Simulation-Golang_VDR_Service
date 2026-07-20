@@ -42,18 +42,26 @@ func (vni *VirtualNetworkInterface) Name() string {
 	return vni.name
 }
 
+// Close closes the virtual network interface connection
+func (vni *VirtualNetworkInterface) Close() error {
+	if vni.ifce != nil {
+		return vni.ifce.Close()
+	}
+	return nil
+}
+
 // Listen starts a blocking loop to continuously read raw packets from the interface
 func (vni *VirtualNetworkInterface) Listen(dispatcher *PacketDispatcher) {
 	log.Printf("Starting virtual interface listener on %s...\n", vni.name)
 
-	// Standard MTU size buffer
-	packet := make([]byte, 1500)
+	// Buffer size set to 2048 to prevent truncation of VLAN/tagged or larger L2 frames
+	packet := make([]byte, 2048)
 
 	for {
 		n, err := vni.ifce.Read(packet)
 		if err != nil {
-			log.Printf("Error reading from interface %s: %v\n", vni.name, err)
-			continue
+			log.Printf("Virtual interface listener on %s stopped: %v\n", vni.name, err)
+			break // Exit loop cleanly when the interface is closed or encounters a read error
 		}
 
 		// Forward the raw packet slice to the dispatcher
