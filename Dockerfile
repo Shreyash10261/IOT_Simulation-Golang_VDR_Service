@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM golang:1.20-alpine AS builder
+FROM golang:1.20-alpine
 WORKDIR /app
 
 # Install git and iproute2 for building/networking
