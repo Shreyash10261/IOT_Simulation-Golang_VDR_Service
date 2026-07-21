@@ -72,8 +72,15 @@ func (m *WorkerManager) LoadAndSpawn(configPath string) error {
 	for _, cfg := range configs {
 		macAddr, err := net.ParseMAC(cfg.MAC)
 		if err != nil {
-			log.Printf("Warning: invalid MAC address %s for device %s, generating default", cfg.MAC, cfg.ID)
-			macAddr = []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x01}
+			log.Printf("Warning: invalid MAC address %s for device %s, generating unique spoofed MAC", cfg.MAC, cfg.ID)
+			
+			// Ensure true L2 separation by generating a unique locally-administered MAC from the IP
+			ipBytes := net.ParseIP(cfg.IP).To4()
+			if ipBytes != nil {
+				macAddr = []byte{0x02, 0x00, ipBytes[0], ipBytes[1], ipBytes[2], ipBytes[3]}
+			} else {
+				macAddr = []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x01} // Fallback
+			}
 		}
 
 		dev := &registry.Device{
