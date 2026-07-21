@@ -29,11 +29,12 @@ type DeviceConfig struct {
 
 // WorkerManager manages all virtual device workers and the background telemetry scheduler.
 type WorkerManager struct {
-	registry *registry.DeviceRegistry
-	workers  map[string]*DeviceWorker
-	mu       sync.Mutex
-	stopChan chan struct{}
-	wg       sync.WaitGroup
+	registry      *registry.DeviceRegistry
+	workers       map[string]*DeviceWorker
+	mu            sync.Mutex
+	stopChan      chan struct{}
+	wg            sync.WaitGroup
+	telemetryOnce sync.Once
 }
 
 // NewWorkerManager initializes a new WorkerManager.
@@ -43,6 +44,14 @@ func NewWorkerManager(reg *registry.DeviceRegistry) *WorkerManager {
 		workers:  make(map[string]*DeviceWorker),
 		stopChan: make(chan struct{}),
 	}
+}
+
+// StartTelemetry starts the telemetry simulation loop exactly once.
+func (m *WorkerManager) StartTelemetry() {
+	m.telemetryOnce.Do(func() {
+		m.wg.Add(1)
+		go m.startTelemetryEngine()
+	})
 }
 
 // LoadAndSpawn reads device configurations from JSON, registers devices, and boots their worker servers.
@@ -101,9 +110,94 @@ func (m *WorkerManager) LoadAndSpawn(configPath string) error {
 	}
 
 	// Start Telemetry Engine loop
-	m.wg.Add(1)
-	go m.startTelemetryEngine()
+	m.StartTelemetry()
 
+	return nil
+}
+
+// Spawn registers a new device configuration and boots its worker listener dynamically.
+func (m *WorkerManager) Spawn(cfg DeviceConfig) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// 1. Check if device is already registered by ID
+	if _, exists := m.workers[cfg.ID]; exists {
+		return fmt.Errorf("device with ID %q is already spawned", cfg.ID)
+	}
+
+	// 2. Check if IP:Port is already used by another device worker
+	for _, w := range m.workers {
+		if w.device.IP == cfg.IP && w.device.Port == cfg.Port {
+			return fmt.Errorf("address %s:%d is already in use by device %q", cfg.IP, cfg.Port, w.device.ID)
+		}
+	}
+
+	macAddr, err := net.ParseMAC(cfg.MAC)
+	if err != nil {
+		log.Printf("Warning: invalid MAC address %s for device %s, generating default", cfg.MAC, cfg.ID)
+		macAddr = []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x01}
+	}
+
+	dev := &registry.Device{
+		ID:              cfg.ID,
+		IP:              cfg.IP,
+		MACAddress:      macAddr,
+		Port:            cfg.Port,
+		Protocol:        cfg.Protocol,
+		Manufacturer:    cfg.Manufacturer,
+		Model:           cfg.Model,
+		IsOnline:        true,
+		TelemetryFields: cfg.Telemetry,
+		Telemetry:       make(map[string]interface{}),
+	}
+
+	if cfg.Protocol == "PJLink" {
+		dev.ProtocolState = pjlink.NewPJLinkDevice()
+	}
+
+	// Register in central DeviceRegistry
+	m.registry.RegisterDevice(dev)
+
+	// Create worker
+	worker := NewDeviceWorker(dev)
+	m.workers[cfg.ID] = worker
+
+	// Start worker listener
+	ctx := context.Background()
+	if err := worker.Start(ctx); err != nil {
+		delete(m.workers, cfg.ID)
+		m.registry.UnregisterDevice(cfg.ID)
+		return fmt.Errorf("failed to start worker for device %s: %w", cfg.ID, err)
+	}
+
+	log.Printf("Dynamically spawned virtual device %s (%s) listening on %s:%d", cfg.ID, cfg.Protocol, cfg.IP, cfg.Port)
+
+	// Make sure telemetry simulation is started
+	m.StartTelemetry()
+
+	return nil
+}
+
+// Kill stops a device worker's listener and removes it from the registry dynamically.
+func (m *WorkerManager) Kill(id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	worker, exists := m.workers[id]
+	if !exists {
+		return fmt.Errorf("device with ID %q is not running", id)
+	}
+
+	// Stop worker listener
+	worker.Stop()
+
+	// Remove from workers map
+	delete(m.workers, id)
+
+	// Remove from registry
+	m.registry.UnregisterDevice(id)
+
+	log.Printf("Dynamically killed virtual device %s", id)
 	return nil
 }
 

@@ -74,6 +74,10 @@ func (w *DeviceWorker) Stop() {
 	if w.listener != nil {
 		w.listener.Close()
 	}
+	err := RemoveIPFromBridge(w.device.IP, "br0")
+	if err != nil {
+		log.Printf("[%s] Note: could not remove IP from bridge: %v", w.device.ID, err)
+	}
 	log.Printf("[%s] Worker stopped.", w.device.ID)
 }
 

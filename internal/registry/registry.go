@@ -64,6 +64,20 @@ func (r *DeviceRegistry) RegisterDevice(dev *Device) {
 	r.devices[dev.IP] = dev
 }
 
+// UnregisterDevice removes a simulated device from the registry by its unique ID.
+// It returns true if the device was found and unregistered, or false otherwise.
+func (r *DeviceRegistry) UnregisterDevice(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for ip, dev := range r.devices {
+		if dev.ID == id {
+			delete(r.devices, ip)
+			return true
+		}
+	}
+	return false
+}
+
 // GetDeviceByIP performs an O(1) lookup for a device by its IP address.
 func (r *DeviceRegistry) GetDeviceByIP(ip string) (*Device, bool) {
 	r.mu.RLock()
