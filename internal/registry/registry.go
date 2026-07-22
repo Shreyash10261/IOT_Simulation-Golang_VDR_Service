@@ -61,7 +61,7 @@ func NewDeviceRegistry() *DeviceRegistry {
 func (r *DeviceRegistry) RegisterDevice(dev *Device) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.devices[dev.IP] = dev
+	r.devices[dev.ID] = dev
 }
 
 // UnregisterDevice removes a simulated device from the registry by its unique ID.
@@ -69,33 +69,31 @@ func (r *DeviceRegistry) RegisterDevice(dev *Device) {
 func (r *DeviceRegistry) UnregisterDevice(id string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for ip, dev := range r.devices {
-		if dev.ID == id {
-			delete(r.devices, ip)
-			return true
-		}
+	if _, exists := r.devices[id]; exists {
+		delete(r.devices, id)
+		return true
 	}
 	return false
 }
 
-// GetDeviceByIP performs an O(1) lookup for a device by its IP address.
+// GetDeviceByIP performs a lookup for a device by its IP address.
 func (r *DeviceRegistry) GetDeviceByIP(ip string) (*Device, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	dev, exists := r.devices[ip]
-	return dev, exists
-}
-
-// GetDeviceByID performs a lookup for a device by its ID.
-func (r *DeviceRegistry) GetDeviceByID(id string) (*Device, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	for _, dev := range r.devices {
-		if dev.ID == id {
+		if dev.IP == ip {
 			return dev, true
 		}
 	}
 	return nil, false
+}
+
+// GetDeviceByID performs an O(1) lookup for a device by its ID.
+func (r *DeviceRegistry) GetDeviceByID(id string) (*Device, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	dev, exists := r.devices[id]
+	return dev, exists
 }
 
 // GetAllDevices returns a slice of all registered devices.
