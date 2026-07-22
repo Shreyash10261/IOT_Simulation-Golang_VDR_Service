@@ -83,6 +83,11 @@ func (m *WorkerManager) LoadAndSpawn(configPath string) error {
 			}
 		}
 
+		// Normalize protocol string internally so greeting handlers work
+		if strings.EqualFold(cfg.Protocol, "PJLink") {
+			cfg.Protocol = "PJLink"
+		}
+
 		dev := &registry.Device{
 			ID:              cfg.ID,
 			IP:              cfg.IP,
@@ -149,6 +154,11 @@ func (m *WorkerManager) Spawn(cfg DeviceConfig) error {
 		} else {
 			macAddr = []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x01} // Fallback
 		}
+	}
+
+	// Normalize protocol string internally so greeting handlers work
+	if strings.EqualFold(cfg.Protocol, "PJLink") {
+		cfg.Protocol = "PJLink"
 	}
 
 	dev := &registry.Device{
