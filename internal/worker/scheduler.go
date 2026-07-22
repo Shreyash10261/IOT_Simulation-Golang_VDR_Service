@@ -7,10 +7,13 @@ import (
 	"github.com/team/vdr/internal/models"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // GenerateTelemetryValue generates the next simulated value for a telemetry field.
 // It uses random walks for numerical types to simulate physical environments.
 func GenerateTelemetryValue(field models.TelemetryField, currentVal interface{}) interface{} {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	switch field.DataType {
 	case "int", "integer":
@@ -18,13 +21,13 @@ func GenerateTelemetryValue(field models.TelemetryField, currentVal interface{})
 			return 100
 		}
 		if val, ok := currentVal.(int); ok {
-			if r.Float64() < 0.2 {
+			if rand.Float64() < 0.2 {
 				return val + 1
 			}
 			return val
 		}
 		if val, ok := currentVal.(float64); ok {
-			if r.Float64() < 0.2 {
+			if rand.Float64() < 0.2 {
 				return int(val) + 1
 			}
 			return int(val)
@@ -48,7 +51,7 @@ func GenerateTelemetryValue(field models.TelemetryField, currentVal interface{})
 		}
 
 		// Random walk
-		change := (r.Float64() - 0.5) * 1.0
+		change := (rand.Float64() - 0.5) * 1.0
 		newVal := currentFloat + change
 		if newVal < 30.0 {
 			newVal = 30.0
@@ -63,7 +66,7 @@ func GenerateTelemetryValue(field models.TelemetryField, currentVal interface{})
 			return true
 		}
 		if val, ok := currentVal.(bool); ok {
-			if r.Float64() < 0.05 {
+			if rand.Float64() < 0.05 {
 				return !val
 			}
 			return val
