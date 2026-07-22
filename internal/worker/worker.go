@@ -84,9 +84,6 @@ func (w *DeviceWorker) Stop() {
 func (w *DeviceWorker) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Timeout connection after inactivity
-	conn.SetDeadline(time.Now().Add(60 * time.Second))
-
 	// Send protocol-specific greeting if applicable
 	if w.device.Protocol == "PJLink" {
 		_, err := conn.Write([]byte("PJLINK 0\r"))
@@ -98,6 +95,9 @@ func (w *DeviceWorker) handleConnection(conn net.Conn) {
 
 	buf := make([]byte, 1024)
 	for {
+		// Timeout connection after inactivity
+		conn.SetDeadline(time.Now().Add(60 * time.Second))
+
 		n, err := conn.Read(buf)
 		if err != nil {
 			if err != io.EOF {
