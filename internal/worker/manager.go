@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -83,8 +84,7 @@ func (m *WorkerManager) LoadAndSpawn(configPath string) error {
 			}
 		}
 
-		// Normalize protocol string internally so greeting handlers work
-		if strings.EqualFold(cfg.Protocol, "PJLink") {
+		if strings.ToUpper(cfg.Protocol) == "PJLINK" {
 			cfg.Protocol = "PJLink"
 		}
 
@@ -144,6 +144,10 @@ func (m *WorkerManager) Spawn(cfg DeviceConfig) error {
 		}
 	}
 
+	if strings.ToUpper(cfg.Protocol) == "PJLINK" {
+		cfg.Protocol = "PJLink"
+	}
+
 	macAddr, err := net.ParseMAC(cfg.MAC)
 	if err != nil {
 		log.Printf("Warning: invalid MAC address %s for device %s, generating unique spoofed MAC", cfg.MAC, cfg.ID)
@@ -154,11 +158,6 @@ func (m *WorkerManager) Spawn(cfg DeviceConfig) error {
 		} else {
 			macAddr = []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x01} // Fallback
 		}
-	}
-
-	// Normalize protocol string internally so greeting handlers work
-	if strings.EqualFold(cfg.Protocol, "PJLink") {
-		cfg.Protocol = "PJLink"
 	}
 
 	dev := &registry.Device{
