@@ -31,7 +31,7 @@ type DeviceConfig struct {
 type WorkerManager struct {
 	registry      *registry.DeviceRegistry
 	workers       map[string]*DeviceWorker
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	stopChan      chan struct{}
 	wg            sync.WaitGroup
 	telemetryOnce sync.Once
@@ -241,10 +241,13 @@ func (m *WorkerManager) startTelemetryEngine() {
 			log.Println("Telemetry Engine Simulator loop stopped.")
 			return
 		case <-ticker.C:
+			// Snapshot under registry RLock (GetAllDevices); per-device updates use
+			// Device.mu via UpdateTelemetry — never hold the global worker mutex here.
 			devices := m.registry.GetAllDevices()
 			for _, dev := range devices {
+				telemetrySnapshot := dev.GetTelemetry()
 				for _, field := range dev.TelemetryFields {
-					currentVal := dev.Telemetry[field.FieldName]
+					currentVal := telemetrySnapshot[field.FieldName]
 					newVal := GenerateTelemetryValue(field, currentVal)
 					dev.UpdateTelemetry(field.FieldName, newVal)
 
