@@ -131,8 +131,9 @@ func TestWorkerAndTelemetry(t *testing.T) {
 	} else {
 		switch v := temp.(type) {
 		case float64:
-			if v < 30.0 || v > 80.0 {
-				t.Errorf("temperature value %f out of expected range [30, 80]", v)
+			// Temperature profile is initially 22.0, bounded between [15.0, 35.0]
+			if v < 15.0 || v > 35.0 {
+				t.Errorf("temperature value %f out of expected range [15.0, 35.0]", v)
 			}
 		default:
 			t.Errorf("unexpected type for temperature: %T", temp)
